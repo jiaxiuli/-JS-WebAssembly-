@@ -1,0 +1,134 @@
+<!--
+ * @Author: 李佳修
+ * @Date: 2022-03-26 15:04:12
+ * @LastEditTime: 2022-03-26 16:48:39
+ * @LastEditors: 李佳修
+ * @FilePath: /Test/fib.html
+-->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+
+<body>
+  <div id="app">
+    <span>输入n：</span>
+    <input type="text" v-model="value">
+    <button @click="handleCalculate(1)">计算</button>
+    <button @click="handleCalculate(10)">计算10次</button>
+    <button @click="handleCalculate(100)">计算100次</button>
+    <span style="margin-left: 100px">切换算法语言：</span>
+    <select v-model="type" style="width: 150px; height: 24px">
+      <option value ="JavaScript">JavaScript</option>
+      <option value ="wasm-C">wasm-C</option>
+    </select>
+    <div>计算结果：{{ result }}</div>
+    <hr>
+    <div>{{ `第${count}次计算` }}</div>
+    <div style="padding: 12px 0px">用时：{{ duration + 'ms' }}</div>
+    <div class="container" ref="container">
+      <div v-for="(item, index) in record" :key="index" class="record">
+        <div class="record-item">{{`第${item.times}次计算`}}</div>
+        <div class="record-item">方法： {{ item.method }}</div>
+        <div class="record-item">输入： {{ item.input }}</div>
+        <div class="record-item">用时： {{ item.duration }}</div>
+        <div class="record-item">平均：{{ item.average }}</div>
+      </div>
+    </div>
+  </div>
+</body>
+<script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.js"></script>
+<script>
+  var myVue = new Vue({
+    el: "#app",
+    data() {
+      return {
+        value: '',
+        result: 0,
+        duration: 0,
+        count: 0,
+        record: [],
+        total: 0,
+        type: 'JavaScript'
+      }
+    },
+    watch: {
+      type: {
+        handler() {
+          console.log(this.type)
+          const hr = document.createElement('hr');
+          this.$refs.container.appendChild(hr);
+          this.total = 0;
+          this.count = 0;
+        }
+      }
+    },
+    methods: {
+      handleCalculate(times) {
+        if (this.type === 'JavaScript') {
+          for (let i = 0; i < times; i++) {
+            this.execute(this.fib)
+          }     
+        } else {
+          fetch('./test.wasm') // 加载文件
+          .then(response => response.arrayBuffer()) // 转成 ArrayBuffer
+          .then(buffer => WebAssembly.compile(buffer))
+          .then(mod => {
+            const instance = new WebAssembly.Instance(mod)
+            const fib = instance.exports.fib//取出c里面的方法
+            for (let i = 0; i < times; i++) {
+              this.execute(fib)
+            }     
+          })
+        }
+      },
+
+      execute(fun) {
+        this.count += 1
+        const start = new Date().getTime()
+        this.result = fun(parseInt(this.value))
+        const end = new Date().getTime()
+        this.duration = end - start
+        this.total += this.duration
+        this.record.push({
+          times: this.count,
+          input: this.value,
+          method: this.type,
+          duration: this.duration + 'ms',
+          average: (this.total / this.count).toFixed(2) + 'ms'
+        })
+      },
+
+      fib(n) {
+        if (n === 0) return 0
+        if (n === 1) return 1
+        return this.fib(n - 1) + this.fib(n - 2)
+      }
+    }
+  })
+
+</script>
+<style>
+  .record {
+    display: flex;
+    padding: 12px 0px;
+  }
+
+  .record-item {
+    width: 200px;
+  }
+
+  .container {
+    width: 100%;
+    height: 600px;
+    border: 1px solid black;
+    overflow: auto;
+  }
+</style>
+
+</html>
